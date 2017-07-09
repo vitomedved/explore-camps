@@ -1,6 +1,9 @@
-var express = require("express");
-var app = express();
-var bodyParser = require("body-parser");
+var express = require("express"),
+    app =express(),
+    bodyParser = require("body-parser"),
+    mongoose = require("mongoose");
+    
+mongoose.connect("mongodb://localhost/explore_camps");
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.set("view engine", "ejs");
@@ -9,21 +12,39 @@ app.get("/", function(req, res){
     res.render("landing");
 });
 
-var campgrounds = [
-            {name: "Dark Azure", image: "https://source.unsplash.com/qmZF9CptLKs"},
-            {name: "Green Mystic", image: "https://source.unsplash.com/mzZVGFfMOkA"},
-            {name: "Colorful Beauty", image: "https://source.unsplash.com/waTo4DNZ4zE"},
-            {name: "Dark Azure", image: "https://source.unsplash.com/qmZF9CptLKs"},
-            {name: "Green Mystic", image: "https://source.unsplash.com/mzZVGFfMOkA"},
-            {name: "Colorful Beauty", image: "https://source.unsplash.com/waTo4DNZ4zE"},
-            {name: "Dark Azure", image: "https://source.unsplash.com/qmZF9CptLKs"},
-            {name: "Green Mystic", image: "https://source.unsplash.com/mzZVGFfMOkA"},
-            {name: "Colorful Beauty", image: "https://source.unsplash.com/waTo4DNZ4zE"}
-            
-        ];
+
+//SCHEMA setup ---------------------------------------------------
+var campgroundSchema = new mongoose.Schema({
+    name: String,
+    image: String
+});
+
+var Campground = mongoose.model("Campground", campgroundSchema);
+
+//testiranje dodavanja u db
+// Campground.create(
+//     {
+//         name: "Green Mystic",
+//         image: "https://source.unsplash.com/mzZVGFfMOkA"
+        
+//     }, function(err, campground){
+//         if(err){
+//             console.log("Error " + err);
+//         }else{
+//             console.log("Newly created campground\n" + campground);
+//         }
+    
+// });
 
 app.get("/campgrounds", function(req, res){
-        res.render("campgrounds", {campgrounds: campgrounds});
+    //get all campgrounds from db
+    Campground.find({}, function(err, camps){
+        if(err){
+            console.log(err);
+        }else{
+            res.render("campgrounds", {campgrounds: camps});
+        }
+    });
 });
 
 app.post("/campgrounds", function(req, res){
@@ -31,9 +52,15 @@ app.post("/campgrounds", function(req, res){
     var name = req.body.name;
     var img = req.body.image;
     var newCampground = {name: name, image: img};
-    campgrounds.push(newCampground);
-    //redirect back to campgrounds page
-    res.redirect("/campgrounds");
+    //create new camp and save to db
+    Campground.create(newCampground, function(err, camp){
+        if(err){
+            console.log("Error: " + err);
+        }else{
+            res.redirect("/campgrounds");
+            console.log("Added camp to database:\n" + camp);
+        }
+    });
 });
 
 app.get("/campgrounds/new", function(req, res) {
