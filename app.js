@@ -10,6 +10,7 @@ mongoose.connect("mongodb://localhost/explore_camps");
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.set("view engine", "ejs");
+app.use(express.static(__dirname + "/public")); //za main.css samo linkamo /stylesheets jer gleda u public folder
 
 //seeding database
 seedDB;
