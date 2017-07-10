@@ -11,4 +11,10 @@
 
 <a href="/campgrounds">Go back</a>
 
+<% campground.comments.forEach(function(comment){ %>
+    <p>
+        <strong><%= comment.author %></strong> - <%= comment.text %>
+    </p>
+<% }); %>
+
 <% include partials/footer %>
