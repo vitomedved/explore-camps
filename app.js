@@ -4,13 +4,37 @@ var express = require("express"),
     mongoose = require("mongoose"),
     Campground = require("./models/campground"),
     Comment = require("./models/comment"),
-    seedDB = require("./seeds");
+    seedDB = require("./seeds"),
+    passport = require("passport"),
+    localStrategy = require("passport-local"),
+    User = require("./models/user");
 
 mongoose.connect("mongodb://localhost/explore_camps");
+//passport config
+app.use(require("express-session")({
+    secret: "Just some basic secret h3h3",
+    resave: false,
+    saveUninitialized: false
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(new localStrategy(User.authenticate()));
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
+
+
+//
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.set("view engine", "ejs");
 app.use(express.static(__dirname + "/public")); //za main.css samo linkamo /stylesheets jer gleda u public folder
+
+//middleware koji u svaku rutu senda currentUser da ne oramo manualno
+app.use(function(req, res, next){
+    res.locals.currentUser = req.user;
+    next();
+});
 
 //seeding database
 seedDB;
@@ -26,7 +50,7 @@ app.get("/campgrounds", function(req, res){
         if(err){
             console.log(err);
         }else{
-            res.render("campgrounds/index", {campgrounds: camps});
+            res.render("campgrounds/index", {campgrounds: camps, currentUser: req.user});
         }
     });
 });
@@ -67,9 +91,9 @@ app.get("/campgrounds/:id", function(req, res) {
     });
 });
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 //COMMENTS ROUTES
-app.get("/campgrounds/:id/comments/new", function(req, res) {
+app.get("/campgrounds/:id/comments/new", isLoggedIn, function(req, res) {
     Campground.findById(req.params.id, function(err, camp){
         if(err){
             console.log(err);
@@ -79,7 +103,7 @@ app.get("/campgrounds/:id/comments/new", function(req, res) {
     });
 });
 
-app.post("/campgrounds/:id", function(req, res){
+app.post("/campgrounds/:id/comments", isLoggedIn, function(req, res){
     Campground.findById(req.params.id, function(err, camp) {
         if(err){
             console.log(err);
@@ -97,7 +121,54 @@ app.post("/campgrounds/:id", function(req, res){
         }
     })
 });
-//----------------------------------------
+
+
+//AUTH ROUTES -------------------------------------------------------------------------
+
+app.get("/register", function(req, res) {
+    res.render("register");
+});
+
+//handle sign up logic
+app.post("/register", function(req, res) {
+    var newUser = new User({username: req.body.username});
+    User.register(newUser, req.body.password, function(err, user){
+        if(err){
+            console.log(err);
+            return res.render("register");
+        }
+        passport.authenticate("local")(req, res, function(){
+            res.redirect("/campgrounds");
+        });
+    });
+});
+//show login form
+app.get("/login", function(req, res) {
+    res.render("login");
+});
+//handling login logic
+app.post("/login", passport.authenticate("local", 
+    {
+        successRedirect: "/campgrounds", failureRedirect: "/login"
+    }), function(req, res) {
+    
+});
+
+//logout
+app.get("/logout", function(req, res) {
+    req.logout();
+    res.redirect("/campgrounds");
+});
+
+//----------------------------------------------------------------------------------------------
+
+function isLoggedIn(req, res, next){
+    if(req.isAuthenticated()){
+        return next();
+    }else{
+        res.redirect("/login");
+    }
+}
 
 
 app.listen(process.env.PORT, process.env.IP, function(){
